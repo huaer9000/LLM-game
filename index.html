@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>人妻攻略模拟器</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════
+       设置屏
+  ══════════════════════════════════════════════════════ -->
+  <div id="setup-screen" class="screen active">
+    <div class="setup-container">
+
+      <h1 class="game-title">人妻攻略模拟器</h1>
+      <p class="game-subtitle">v2.0 · LLM 驱动文字冒险</p>
+
+      <div class="setup-card">
+
+        <div class="form-group">
+          <label for="api-url">LM Studio API 地址</label>
+          <input id="api-url" type="text" placeholder="http://localhost:1234/v1" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="form-group">
+          <label for="api-key">API Key <span class="label-hint">（本地 LM Studio 可留空）</span></label>
+          <input id="api-key" type="password" placeholder="sk-..." autocomplete="off">
+        </div>
+
+        <div class="form-group model-row">
+          <label for="model-select">选择模型</label>
+          <div class="model-controls">
+            <select id="model-select">
+              <option value="">请先点击"刷新模型"</option>
+            </select>
+            <button id="refresh-models-btn" class="btn btn-outline">刷新模型</button>
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <button id="start-btn" class="btn btn-primary">开始新游戏</button>
+          <button id="load-btn" class="btn btn-secondary hidden">读取存档</button>
+        </div>
+
+      </div>
+
+      <p class="setup-footer">本游戏仅限 18 岁以上成年人游玩。所有内容均为虚构，与现实无关。</p>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       游戏屏
+  ══════════════════════════════════════════════════════ -->
+  <div id="game-screen" class="screen">
+
+    <!-- 顶部工具栏 -->
+    <div id="toolbar">
+      <span class="toolbar-title">人妻攻略模拟器</span>
+      <div class="toolbar-actions">
+        <button id="save-game-btn" class="toolbar-btn">存档</button>
+        <button id="load-game-btn" class="toolbar-btn">读档</button>
+        <button id="new-game-btn"  class="toolbar-btn">新游戏</button>
+        <button id="settings-btn"  class="toolbar-btn">⚙</button>
+      </div>
+    </div>
+
+    <!-- 叙事输出区 -->
+    <div id="output-area">
+      <div id="output-inner"></div>
+      <span id="cursor">█</span>
+    </div>
+
+    <!-- 行动建议按钮区 -->
+    <div id="action-buttons" class="hidden"></div>
+
+    <!-- 输入区 -->
+    <div id="input-area">
+      <textarea id="player-input" rows="2" placeholder="输入你的行动…（Enter 发送，Shift+Enter 换行）" autocomplete="off" spellcheck="false"></textarea>
+      <button id="submit-btn" class="btn btn-primary">发送</button>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       设置弹窗
+  ══════════════════════════════════════════════════════ -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 class="modal-title">游戏设置</h2>
+
+      <div class="form-group">
+        <label for="modal-api-url">API 地址</label>
+        <input id="modal-api-url" type="text" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="form-group">
+        <label for="modal-api-key">API Key</label>
+        <input id="modal-api-key" type="password" autocomplete="off">
+      </div>
+
+      <div class="form-group model-row">
+        <label for="modal-model">模型</label>
+        <div class="model-controls">
+          <select id="modal-model">
+            <option value="">请先刷新</option>
+          </select>
+          <button id="modal-refresh-btn" class="btn btn-outline">刷新</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modal-save-btn"  class="btn btn-primary">保存</button>
+        <button id="modal-close-btn" class="btn btn-secondary">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- 脚本（顺序不可改变） -->
+  <script src="script/config.js"></script>
+  <script src="script/engine.js"></script>
+  <script src="script/ui.js"></script>
+  <script src="script/main.js"></script>
+</body>
+</html>
