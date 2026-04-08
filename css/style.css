@@ -530,6 +530,7 @@ select {
   flex-shrink: 0;
   gap: 12px;
   position: relative;
+  min-width: 0;
 }
 
 .toolbar-title {
@@ -543,6 +544,7 @@ select {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 /* ── 回合指示器 ────────────────────────────────────────────── */
@@ -748,6 +750,8 @@ select {
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 #game-body.debug-split {
@@ -1513,7 +1517,7 @@ code.md-code {
 #player-input {
   flex: 1;
   resize: none;
-  height: 44px;
+  height: auto;
   min-height: 44px;
   max-height: 120px;
   overflow-y: auto;
@@ -2090,6 +2094,33 @@ textarea.auto-resize {
   }
 
 
+  #toolbar {
+    height: auto;
+    min-height: 42px;
+    padding: 8px 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-actions {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .toolbar-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .toolbar-btn {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
   .setup-card {
     padding: 20px 16px;
   }
@@ -2132,9 +2163,20 @@ textarea.auto-resize {
   }
 
   #main-content {
+    width: 100%;
+    max-width: 100%;
     padding-left: 12px;
     padding-right: 12px;
     padding-bottom: 12px;
+  }
+
+  #output-area,
+  #output-inner,
+  #action-buttons,
+  #input-area {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   #action-buttons {
@@ -2156,7 +2198,7 @@ textarea.auto-resize {
   }
 
   .round-indicator {
-    margin-left: 4px;
+    margin: 0;
   }
 
   /* 弹窗：移动端底部抽屉风格 */

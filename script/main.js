@@ -190,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAutoResize(document.getElementById('cfg-world-scene'));
   initAutoResize(npcEditAppearance);
   initAutoResize(npcEditExtra);
+  initAutoResize(playerInput);
 
   function populatePlayerWorld(config) {
     document.getElementById('cfg-player-name').value = config?.player?.name || '';
@@ -1148,6 +1149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = playerInput.value.trim();
     if (!text) return;
     playerInput.value = '';
+    autoResize(playerInput);
     sendToLLM(text);
   });
 
