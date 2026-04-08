@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const playerInput = document.getElementById('player-input');
   const submitBtn = document.getElementById('submit-btn');
   const toastEl = document.getElementById('toast');
+  const inputArea = document.getElementById('input-area');
 
   // 新游戏流程只需两步（玩家 → 世界观），NPC 由游戏后自动解析 + 角色管理入口维护
   const configSteps = ['tab-world', 'tab-player'];
@@ -91,6 +92,59 @@ document.addEventListener('DOMContentLoaded', () => {
     toastEl.classList.remove('hidden');
     setTimeout(() => toastEl.classList.add('hidden'), 2500);
   }
+
+  function isEditableElement(el) {
+    return !!el && (
+      el.tagName === 'TEXTAREA' ||
+      (el.tagName === 'INPUT' && !el.readOnly && !el.disabled) ||
+      el.isContentEditable
+    );
+  }
+
+  function setupMobileKeyboardAvoidance() {
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+
+    function syncViewportMetrics() {
+      const viewportHeight = viewport ? viewport.height : window.innerHeight;
+      const keyboardOffset = viewport
+        ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+        : 0;
+      const activeEditable = isEditableElement(document.activeElement);
+      const isKeyboardOpen = activeEditable && keyboardOffset > 100;
+
+      root.style.setProperty('--app-height', `${Math.round(viewportHeight)}px`);
+      root.style.setProperty('--keyboard-offset', `${Math.round(isKeyboardOpen ? keyboardOffset : 0)}px`);
+      document.body.classList.toggle('keyboard-open', isKeyboardOpen);
+    }
+
+    function revealInputArea() {
+      syncViewportMetrics();
+      if (!isEditableElement(document.activeElement) || !inputArea) return;
+
+      requestAnimationFrame(() => {
+        inputArea.scrollIntoView({ block: 'end', inline: 'nearest', behavior: 'smooth' });
+      });
+    }
+
+    syncViewportMetrics();
+
+    if (viewport) {
+      viewport.addEventListener('resize', syncViewportMetrics);
+      viewport.addEventListener('scroll', syncViewportMetrics);
+      viewport.addEventListener('resize', revealInputArea);
+    }
+
+    window.addEventListener('resize', syncViewportMetrics);
+    playerInput?.addEventListener('focus', () => {
+      revealInputArea();
+      setTimeout(revealInputArea, 250);
+      setTimeout(revealInputArea, 500);
+    });
+    playerInput?.addEventListener('blur', syncViewportMetrics);
+  }
+
+  setupMobileKeyboardAvoidance();
 
   function applySavedModelOption(selectEl, model) {
     if (!model) return;
@@ -1127,6 +1181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let voiceMode    = false;  // 是否正在录音
     let voiceCancel  = false;  // 是否上划取消
     let processing   = false;  // 是否正在 Whisper 推理
+    let pendingPermission = false;
+    let pressActive  = false;
+    let voiceRequestId = 0;
     let startY       = 0;
     let pressTimer   = null;
     let activePointerId = null;
@@ -1213,26 +1270,64 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    function resetVoiceUi() {
+      voiceMode = false;
+      voiceCancel = false;
+      pendingPermission = false;
+      voiceOverlay.classList.add('hidden');
+      voiceTarget.classList.remove('voice-recording');
+      inputArea.classList.remove('voice-cancel');
+    }
+
+    function abortVoiceCapture() {
+      voiceRequestId += 1;
+      if (mediaRecorder?.state && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.ondataavailable = null;
+        mediaRecorder.onstop = null;
+        mediaRecorder.stop();
+      }
+      mediaRecorder = null;
+      stopStream();
+      audioChunks = [];
+      processing = false;
+      resetVoiceUi();
+    }
+
     // ── 进入录音模式 ──
     function enterVoiceMode() {
+      if (pendingPermission) {
+        return;
+      }
       if (!workerReady) {
         showToast('模型加载中，请稍候…');
         return;
       }
-      voiceMode    = true;
+      pendingPermission = true;
       voiceCancel  = false;
       audioChunks  = [];
       playerInput.blur();
-
       voiceOverlay.classList.remove('hidden');
       voiceTarget.classList.add('voice-recording');
       inputArea.classList.remove('voice-cancel');
-      if (voiceHint) voiceHint.textContent = '上划取消';
+      if (voiceHint) voiceHint.textContent = '请求麦克风权限…';
+
+      const requestId = ++voiceRequestId;
 
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(s => {
-          if (!voiceMode) { s.getTracks().forEach(t => t.stop()); return; }
+          if (requestId !== voiceRequestId) {
+            s.getTracks().forEach(t => t.stop());
+            return;
+          }
+          pendingPermission = false;
+          if (!pressActive) {
+            s.getTracks().forEach(t => t.stop());
+            resetVoiceUi();
+            return;
+          }
+          voiceMode = true;
           stream = s;
+          if (voiceHint) voiceHint.textContent = '上划取消';
 
           // 选择最佳支持的 MIME 类型
           const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', 'audio/mp4']
@@ -1245,14 +1340,22 @@ document.addEventListener('DOMContentLoaded', () => {
           mediaRecorder.start();
         })
         .catch(() => {
-          exitVoiceMode(true);
+          if (requestId !== voiceRequestId) return;
+          pendingPermission = false;
+          resetVoiceUi();
           showToast('无法访问麦克风，请检查权限');
         });
     }
 
     // ── 退出录音模式 ──
     function exitVoiceMode(cancelled) {
-      if (!voiceMode) return;
+      if (!voiceMode && !pendingPermission) return;
+
+      if (pendingPermission) {
+        abortVoiceCapture();
+        return;
+      }
+
       voiceMode = false;
       voiceTarget.classList.remove('voice-recording');
       inputArea.classList.remove('voice-cancel');
@@ -1261,8 +1364,10 @@ document.addEventListener('DOMContentLoaded', () => {
         voiceOverlay.classList.add('hidden');
         if (mediaRecorder?.state !== 'inactive') {
           mediaRecorder.ondataavailable = null;
+          mediaRecorder.onstop = null;
           mediaRecorder.stop();
         }
+        mediaRecorder = null;
         stopStream();
         audioChunks = [];
         return;
@@ -1274,6 +1379,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const finalize = async () => {
         stopStream();
+        mediaRecorder = null;
         if (!audioChunks.length) {
           voiceOverlay.classList.add('hidden');
           processing = false;
@@ -1316,7 +1422,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function beginPress(clientY) {
-      if (processing || voiceMode) return;
+      if (processing || voiceMode || pendingPermission) return;
+      pressActive = true;
       startY = clientY;
       clearPressTimer();
       pressTimer = setTimeout(() => {
@@ -1334,10 +1441,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function endPress(cancelled = false) {
+      pressActive = false;
       if (clearPressTimer()) {
         return;
       }
-      if (voiceMode) exitVoiceMode(cancelled || voiceCancel);
+      if (voiceMode || pendingPermission) exitVoiceMode(cancelled || voiceCancel);
     }
 
     // ── 桌面和移动端统一用 Pointer 事件：按住输入框 400ms 进入录音 ──
@@ -1375,6 +1483,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     voiceTarget.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+    });
+
+    window.addEventListener('blur', () => {
+      pressActive = false;
+      clearPressTimer();
+      if (voiceMode || pendingPermission) {
+        abortVoiceCapture();
+      }
+      activePointerId = null;
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'hidden') return;
+      pressActive = false;
+      clearPressTimer();
+      if (voiceMode || pendingPermission) {
+        abortVoiceCapture();
+      }
+      activePointerId = null;
     });
 
     // 启动 Worker（预热）
@@ -1595,18 +1722,6 @@ document.addEventListener('DOMContentLoaded', () => {
       currentGameConfig.npcs = npcDrafts;
       buildConfigTextFromData(currentGameConfig.player, currentGameConfig.world, npcDrafts);
     }
-  }
-
-  // ── 移动端键盘检测（visualViewport） ───────────────────────
-  if (window.visualViewport) {
-    let lastVH = window.visualViewport.height;
-    window.visualViewport.addEventListener('resize', () => {
-      const newVH = window.visualViewport.height;
-      const diff = lastVH - newVH;
-      // 高度缩减超过 100px 认为键盘弹出
-      document.body.classList.toggle('keyboard-open', diff > 100);
-      lastVH = newVH;
-    });
   }
 
   // ── 隐藏入口：连按 10 次 Shift 进入/退出调试模式 ───────────

@@ -13,6 +13,8 @@
   --radius:       3px;
   --game-rail-width: 980px;
   --transition:   0.2s ease;
+  --app-height:   100vh;
+  --keyboard-offset: 0px;
 }
 
 /* ── 暗色主题（默认）─────────────────────────────────────── */
@@ -98,6 +100,7 @@ body {
   display: none;
   height: 100vh;
   height: 100dvh; /* 移动端动态视口，避免地址栏遮挡 */
+  height: var(--app-height);
 }
 
 .screen.active {
@@ -1498,12 +1501,13 @@ code.md-code {
   width: 100%;
   max-width: var(--game-rail-width);
   margin: 14px auto 0;
-  padding: 12px;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px) + var(--keyboard-offset));
   background: color-mix(in srgb, var(--bg-input) 90%, transparent);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 10px 24px rgba(0,0,0,0.06);
   flex-shrink: 0;
+  scroll-margin-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 #player-input {
