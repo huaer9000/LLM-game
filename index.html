@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>人妻攻略模拟器</title>
+  <title>世界模拟器</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,8 +14,8 @@
   <div id="setup-screen" class="screen active">
     <div class="setup-container">
 
-      <h1 class="game-title">人妻攻略模拟器</h1>
-      <p class="game-subtitle">v2.0 · LLM 驱动文字冒险</p>
+      <h1 class="game-title">世界模拟器</h1>
+      <p class="game-subtitle">AI 驱动文字冒险游戏</p>
 
       <div class="setup-card">
 
@@ -41,13 +41,108 @@
 
         <div class="setup-actions">
           <button id="start-btn" class="btn btn-primary">开始新游戏</button>
-          <button id="load-btn" class="btn btn-secondary hidden">读取存档</button>
+          <button id="continue-btn" class="btn btn-secondary hidden">继续游戏</button>
         </div>
 
       </div>
 
-      <p class="setup-footer">本游戏仅限 18 岁以上成年人游玩。所有内容均为虚构，与现实无关。</p>
+      <p class="setup-footer">本游戏所有内容均为虚构，与现实无关！</p>
 
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       游戏配置屏（新游戏流程）
+  ══════════════════════════════════════════════════════ -->
+  <div id="game-config-screen" class="screen">
+    <div class="page-shell">
+      <div class="page-card page-card-wide">
+        <div class="page-header">
+          <div>
+            <h2 id="config-modal-title" class="modal-title">游戏设置</h2>
+            <p class="page-desc">配置世界观与玩家设定，然后开始新游戏。</p>
+          </div>
+          <div class="page-header-actions">
+            <button id="cfg-random-btn" class="btn btn-random hidden">🎲 随机生成</button>
+            <button id="cfg-close-btn" class="screen-close-btn" type="button" aria-label="关闭游戏设置">✕</button>
+          </div>
+        </div>
+
+        <!-- Tab 导航 -->
+        <div class="tab-nav">
+          <button class="tab-btn active" data-tab="tab-world">世界观</button>
+          <button class="tab-btn" data-tab="tab-player">玩家</button>
+          <button id="tab-npc-btn" class="tab-btn hidden" data-tab="tab-npc">角色</button>
+        </div>
+
+        <!-- 世界设置 -->
+        <div id="tab-world" class="tab-pane active">
+          <div class="form-group">
+            <label for="cfg-world-bg">世界观描述</label>
+            <textarea id="cfg-world-bg" class="auto-resize" rows="3" placeholder="输入你想要游玩的世界设定，或者点击「随机生成」" autocomplete="off"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="cfg-world-scene">开场场景</label>
+            <textarea id="cfg-world-scene" class="auto-resize" rows="2" placeholder="输入你希望的开场场景，留空则 AI 自动生成" autocomplete="off"></textarea>
+          </div>
+        </div>
+
+        <!-- 玩家设置 -->
+        <div id="tab-player" class="tab-pane">
+          <div class="form-group">
+            <label for="cfg-player-name">昵称</label>
+            <input id="cfg-player-name" type="text" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label for="cfg-player-gender">性别</label>
+            <select id="cfg-player-gender">
+              <option value="男">男</option>
+              <option value="女">女</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cfg-player-traits">性格设定</label>
+            <input id="cfg-player-traits" type="text" autocomplete="off">
+          </div>
+        </div>
+
+        <!-- NPC tab 占位（新游戏流程中始终隐藏） -->
+        <div id="tab-npc" class="tab-pane"></div>
+
+        <div class="modal-actions">
+          <button id="cfg-start-btn" class="btn btn-primary">下一步</button>
+          <button id="cfg-back-btn" class="btn btn-secondary">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       角色管理页（游戏中途）
+  ══════════════════════════════════════════════════════ -->
+  <div id="npc-manage-screen" class="screen">
+    <div class="page-shell">
+      <div class="page-card page-card-wide page-card-scrollable">
+        <div class="page-header">
+          <div>
+            <h2 class="modal-title">角色管理</h2>
+            <p class="page-desc">角色以紧凑卡片显示，点击卡片可编辑详情。修改会在下一回合生效。</p>
+          </div>
+          <button id="npc-manage-close-btn" class="screen-close-btn" type="button" aria-label="关闭角色管理">✕</button>
+        </div>
+        <div class="page-scroll-body">
+          <div class="npc-section-header">
+            <span>角色列表</span>
+            <button id="add-npc-btn-modal" class="btn btn-outline btn-sm">＋ 添加角色</button>
+          </div>
+          <div id="npc-editor-list-modal" class="npc-editor-list npc-compact-list"></div>
+          <div id="npc-empty-modal" class="npc-empty">暂无角色。你可以手动添加角色。</div>
+        </div>
+        <div class="modal-actions modal-actions-sticky">
+          <button id="npc-modal-save-btn" class="btn btn-primary">应用设置</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -58,62 +153,240 @@
 
     <!-- 顶部工具栏 -->
     <div id="toolbar">
-      <span class="toolbar-title">人妻攻略模拟器</span>
+      <span class="toolbar-title">世界模拟器</span>
+      <span id="round-indicator" class="round-indicator hidden"></span>
+      <span id="debug-indicator" class="debug-indicator hidden">DEBUG</span>
       <div class="toolbar-actions">
-        <button id="save-game-btn" class="toolbar-btn">存档</button>
-        <button id="load-game-btn" class="toolbar-btn">读档</button>
-        <button id="new-game-btn"  class="toolbar-btn">新游戏</button>
-        <button id="settings-btn"  class="toolbar-btn">⚙</button>
+        <button id="new-game-btn"     class="toolbar-btn">新游戏</button>
+        <button id="restart-game-btn" class="toolbar-btn">重新开始</button>
+        <button id="game-settings-btn" class="toolbar-btn">角色管理</button>
+        <button id="backdoor-btn"     class="toolbar-btn hidden">Prompt管理</button>
+        <button id="display-btn"      class="toolbar-btn">显示</button>
+        <button id="settings-btn"     class="toolbar-btn">API配置</button>
       </div>
     </div>
 
-    <!-- 叙事输出区 -->
-    <div id="output-area">
-      <div id="output-inner"></div>
-      <span id="cursor">█</span>
+    <!-- 显示设置浮层 -->
+    <div id="display-panel" class="display-panel hidden">
+      <div class="dp-section">
+        <div class="dp-label">主题</div>
+        <div class="dp-row">
+          <button class="dp-btn" data-theme="dark">🌑 暗色</button>
+          <button class="dp-btn" data-theme="light">☀️ 亮色</button>
+        </div>
+      </div>
+      <div class="dp-section">
+        <div class="dp-label">字号</div>
+        <div class="dp-row">
+          <button class="dp-btn" data-size="13">小</button>
+          <button class="dp-btn" data-size="15">中</button>
+          <button class="dp-btn" data-size="17">大</button>
+          <button class="dp-btn" data-size="19">特大</button>
+        </div>
+      </div>
+      <div class="dp-section">
+        <div class="dp-label">字体</div>
+        <div class="dp-row">
+          <button class="dp-btn" data-font="mono">楷体</button>
+          <button class="dp-btn" data-font="sans">黑体</button>
+          <button class="dp-btn" data-font="serif">宋体</button>
+        </div>
+      </div>
     </div>
 
-    <!-- 行动建议按钮区 -->
-    <div id="action-buttons" class="hidden"></div>
+    <!-- 主体区域：左侧边栏 + 右侧正文 -->
+    <div id="game-body">
+      <div id="debug-raw-panel" class="debug-panel hidden">
+        <div class="debug-panel-header">原始输出</div>
+        <div id="debug-raw-area" class="debug-panel-body">
+          <pre id="debug-raw-inner"></pre>
+        </div>
+      </div>
 
-    <!-- 输入区 -->
-    <div id="input-area">
-      <textarea id="player-input" rows="2" placeholder="输入你的行动…（Enter 发送，Shift+Enter 换行）" autocomplete="off" spellcheck="false"></textarea>
-      <button id="submit-btn" class="btn btn-primary">发送</button>
+      <!-- 主内容区（单列） -->
+      <div id="main-content">
+
+        <!-- 叙事输出区 -->
+        <div id="output-area">
+          <div id="output-inner"></div>
+          <span id="cursor">█</span>
+        </div>
+
+        <!-- 行动建议按钮区 -->
+        <div id="action-buttons" class="hidden"></div>
+
+        <!-- 输入区 -->
+        <div id="input-area">
+          <button id="items-btn" class="items-btn" title="查看回合历史">📖</button>
+          <textarea id="player-input" rows="1" placeholder="输入行动，或按住说话" autocomplete="off" spellcheck="false"></textarea>
+          <button id="submit-btn" class="btn btn-primary">发送</button>
+          <!-- 语音录制覆盖层 -->
+          <div id="voice-overlay" class="hidden">
+            <div class="voice-dots">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div id="voice-hint">上划取消</div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
   </div>
 
-  <!-- ══════════════════════════════════════════════════════
-       设置弹窗
-  ══════════════════════════════════════════════════════ -->
-  <div id="settings-modal" class="modal hidden">
-    <div class="modal-content">
-      <h2 class="modal-title">游戏设置</h2>
-
-      <div class="form-group">
-        <label for="modal-api-url">API 地址</label>
-        <input id="modal-api-url" type="text" autocomplete="off" spellcheck="false">
-      </div>
-
-      <div class="form-group">
-        <label for="modal-api-key">API Key</label>
-        <input id="modal-api-key" type="password" autocomplete="off">
-      </div>
-
-      <div class="form-group model-row">
-        <label for="modal-model">模型</label>
-        <div class="model-controls">
-          <select id="modal-model">
-            <option value="">请先刷新</option>
-          </select>
-          <button id="modal-refresh-btn" class="btn btn-outline">刷新</button>
+  <!-- 回合历史页 -->
+  <div id="round-history-screen" class="screen">
+    <div class="page-shell">
+      <div class="page-card page-card-wide page-card-scrollable">
+        <div class="page-header">
+          <div>
+            <h2 class="modal-title">回合历史</h2>
+            <p class="page-desc">查看每一回合的正文摘要，并切换到任意历史节点继续浏览。</p>
+          </div>
+          <button id="rh-close-btn" class="screen-close-btn" type="button" aria-label="关闭回合历史">✕</button>
+        </div>
+        <div class="page-scroll-body">
+          <div id="rh-list" class="rh-list rh-list-full"></div>
         </div>
       </div>
+    </div>
+  </div>
 
+  <!-- ══════════════════════════════════════════════════════
+       游戏设置页（游戏内 API 设置）
+  ══════════════════════════════════════════════════════ -->
+  <div id="settings-screen" class="screen">
+    <div class="page-shell">
+      <div class="page-card">
+        <div class="page-header">
+          <div>
+            <h2 class="modal-title">游戏设置</h2>
+            <p class="page-desc">管理 API 地址、密钥与当前模型。</p>
+          </div>
+          <button id="settings-close-btn" class="screen-close-btn" type="button" aria-label="关闭游戏设置">✕</button>
+        </div>
+
+        <div class="form-group">
+          <label for="modal-api-url">API 地址</label>
+          <input id="modal-api-url" type="text" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="form-group">
+          <label for="modal-api-key">API Key</label>
+          <input id="modal-api-key" type="password" autocomplete="off">
+        </div>
+
+        <div class="form-group model-row">
+          <label for="modal-model">模型</label>
+          <div class="model-controls">
+            <select id="modal-model">
+              <option value="">请先刷新</option>
+            </select>
+            <button id="modal-refresh-btn" class="btn btn-outline">刷新</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="modal-save-btn"  class="btn btn-primary">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 角色编辑弹窗 -->
+  <div id="npc-editor-modal" class="modal hidden">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h2 id="npc-editor-title" class="modal-title">编辑角色</h2>
+        <button id="npc-editor-close-btn" class="btn btn-secondary btn-sm" type="button">关闭</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>姓名</label>
+          <input id="npc-edit-name" type="text" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>性别</label>
+          <select id="npc-edit-gender">
+            <option value="女">女</option>
+            <option value="男">男</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>年龄</label>
+          <input id="npc-edit-age" type="number" min="18" max="99">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>职业</label>
+          <input id="npc-edit-job" type="text" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>性格标签</label>
+        <input id="npc-edit-traits" type="text" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>外貌特征</label>
+        <textarea id="npc-edit-appearance" class="auto-resize" rows="3" autocomplete="off"></textarea>
+      </div>
+      <div class="form-group">
+        <label>补充信息</label>
+        <textarea id="npc-edit-extra" class="auto-resize" rows="3" autocomplete="off"></textarea>
+      </div>
+      <label class="checkbox-label npc-editor-enabled-row">
+        <input id="npc-edit-enabled" type="checkbox">
+        <span>启用该角色</span>
+      </label>
       <div class="modal-actions">
-        <button id="modal-save-btn"  class="btn btn-primary">保存</button>
-        <button id="modal-close-btn" class="btn btn-secondary">取消</button>
+        <button id="npc-editor-delete-btn" class="btn btn-secondary" type="button">删除角色</button>
+        <button id="npc-editor-save-btn" class="btn btn-primary" type="button">保存角色</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt 管理 -->
+  <div id="prompt-modal" class="modal hidden">
+    <div class="modal-content prompt-modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Prompt 管理</h2>
+        <button id="prompt-close-btn" class="btn btn-secondary btn-sm">关闭</button>
+      </div>
+
+      <!-- Tab 导航 -->
+      <div class="tab-nav pm-tab-nav">
+        <button class="tab-btn active" data-pm-tab="system">系统 Prompt</button>
+        <button class="tab-btn" data-pm-tab="worldGen">世界生成</button>
+        <button class="tab-btn" data-pm-tab="npcGen">NPC 生成</button>
+      </div>
+
+      <!-- 系统 Prompt -->
+      <div id="pm-tab-system" class="pm-tab-pane active">
+        <div class="pm-pane-header">
+          <span class="pm-pane-desc">控制游戏主 AI 的行为规则、输出格式和叙事风格</span>
+          <button class="btn btn-outline btn-sm" id="add-system-btn">＋ 新增</button>
+        </div>
+        <div id="pm-list-system" class="pm-list"></div>
+      </div>
+
+      <!-- 世界生成 Prompt -->
+      <div id="pm-tab-worldGen" class="pm-tab-pane">
+        <div class="pm-pane-header">
+          <span class="pm-pane-desc">控制随机生成世界背景和开场场景时使用的指令</span>
+          <button class="btn btn-outline btn-sm" id="add-worldGen-btn">＋ 新增</button>
+        </div>
+        <div id="pm-list-worldGen" class="pm-list"></div>
+      </div>
+
+      <!-- NPC 生成 Prompt -->
+      <div id="pm-tab-npcGen" class="pm-tab-pane">
+        <div class="pm-pane-header">
+          <span class="pm-pane-desc">控制随机生成 NPC 角色卡时使用的指令</span>
+          <button class="btn btn-outline btn-sm" id="add-npcGen-btn">＋ 新增</button>
+        </div>
+        <div id="pm-list-npcGen" class="pm-list"></div>
       </div>
     </div>
   </div>
