@@ -1052,18 +1052,42 @@ document.addEventListener('DOMContentLoaded', () => {
   const DISPLAY_KEY = 'llm_game_display_v1';
   const displayBtn   = document.getElementById('display-btn');
   const displayPanel = document.getElementById('display-panel');
+  const toolbar = document.getElementById('toolbar');
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+
+  function closeMobileMenu() {
+    toolbar?.classList.remove('menu-open');
+    mobileMenuBtn?.setAttribute('aria-expanded', 'false');
+  }
+
+  mobileMenuBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const nextOpen = !toolbar.classList.contains('menu-open');
+    toolbar.classList.toggle('menu-open', nextOpen);
+    mobileMenuBtn.setAttribute('aria-expanded', String(nextOpen));
+  });
+
+  toolbar?.querySelector('.toolbar-actions')?.addEventListener('click', (e) => {
+    if (!e.target.closest('.toolbar-btn')) return;
+    closeMobileMenu();
+  });
 
   const FONT_FAMILIES = {
-    mono:  "'STKaiti', 'KaiTi', 'Kaiti SC', 'DFKai-SB', serif",
-    sans:  "system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
-    serif: "'Songti SC', STSong, 'SimSun', Georgia, serif",
+    mono:  "'Kaiti SC', 'STKaiti', 'KaiTi', 'BiauKai', 'DFKai-SB', serif",
+    sans:  "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, -apple-system, sans-serif",
+    serif: "'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', STSong, 'SimSun', Georgia, serif",
   };
+
+  function getDefaultDisplaySettings() {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    return { theme: 'dark', size: isMobile ? 19 : 15, font: 'mono' };
+  }
 
   function loadDisplaySettings() {
     try {
       const raw = localStorage.getItem(DISPLAY_KEY);
-      return raw ? JSON.parse(raw) : { theme: 'dark', size: 14, font: 'mono' };
-    } catch { return { theme: 'dark', size: 14, font: 'mono' }; }
+      return raw ? JSON.parse(raw) : getDefaultDisplaySettings();
+    } catch { return getDefaultDisplaySettings(); }
   }
 
   function saveDisplaySettings(s) {
@@ -1111,6 +1135,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 点击面板外部关闭
   document.addEventListener('click', (e) => {
+    if (toolbar?.classList.contains('menu-open') &&
+        !toolbar.contains(e.target)) {
+      closeMobileMenu();
+    }
     if (!displayPanel.classList.contains('hidden') &&
         !displayPanel.contains(e.target) &&
         e.target !== displayBtn) {
@@ -1160,355 +1188,6 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.click();
     }
   });
-
-  // ── 语音输入（Whisper.js 本地推理，无需联网） ──────────────────
-  (function () {
-    const voiceTarget  = playerInput;
-    const voiceOverlay = document.getElementById('voice-overlay');
-    const voiceHint    = document.getElementById('voice-hint');
-    const inputArea    = document.getElementById('input-area');
-    if (!voiceTarget) return;
-
-    // 检查 MediaRecorder 支持
-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      return;
-    }
-
-    // ── 状态变量 ──
-    let worker       = null;   // Whisper Web Worker
-    let workerReady  = false;  // 模型是否已加载完成
-    let mediaRecorder = null;
-    let audioChunks  = [];
-    let stream       = null;
-    let voiceMode    = false;  // 是否正在录音
-    let voiceCancel  = false;  // 是否上划取消
-    let processing   = false;  // 是否正在 Whisper 推理
-    let pendingPermission = false;
-    let pressActive  = false;
-    let voiceRequestId = 0;
-    let startY       = 0;
-    let pressTimer   = null;
-    let activePointerId = null;
-
-    // ── 初始化 Worker ──
-    function initWorker() {
-      if (worker) return;
-      try {
-        worker = new Worker('script/whisper-worker.js', { type: 'module' });
-      } catch (_) {
-        // 部分环境不支持 module worker，降级为纯文本输入
-        return;
-      }
-
-      worker.onmessage = (e) => {
-        const { type, text, progress, message } = e.data;
-
-        if (type === 'loading') {
-          if (voiceHint) voiceHint.textContent = '模型加载中…';
-        } else if (type === 'progress') {
-          // 展示下载进度（仅首次）
-          if (progress?.status === 'progress' && voiceHint && processing) {
-            const pct = Math.round(progress.progress ?? 0);
-            voiceHint.textContent = `下载模型 ${pct}%`;
-          }
-        } else if (type === 'ready') {
-          workerReady = true;
-        } else if (type === 'transcribing') {
-          if (voiceHint) voiceHint.textContent = '识别中…';
-        } else if (type === 'result') {
-          processing = false;
-          voiceOverlay.classList.add('hidden');
-          const trimmed = (text || '').trim();
-          if (trimmed) {
-            playerInput.value = trimmed;
-            submitBtn.click();
-          }
-        } else if (type === 'error') {
-          processing = false;
-          voiceOverlay.classList.add('hidden');
-          showToast('语音识别失败：' + (message || '未知错误'));
-        }
-      };
-
-      worker.onerror = () => {
-        processing = false;
-        voiceOverlay.classList.add('hidden');
-        showToast('语音模块加载失败');
-      };
-
-      // 页面加载后立即预热模型（后台下载缓存）
-      worker.postMessage({ type: 'load' });
-    }
-
-    // ── 音频解码：Blob → 16 kHz Float32Array ──
-    async function decodeAudioTo16k(blob) {
-      const arrayBuffer = await blob.arrayBuffer();
-
-      // 第一步：用原始采样率解码
-      const rawCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const audioBuffer = await rawCtx.decodeAudioData(arrayBuffer);
-      rawCtx.close();
-
-      // 第二步：通过 OfflineAudioContext 重采样到 16 kHz 单声道
-      const targetRate   = 16000;
-      const targetFrames = Math.ceil(audioBuffer.duration * targetRate);
-      if (targetFrames < 1600) return null; // 不足 0.1 秒，忽略
-
-      const offCtx = new OfflineAudioContext(1, targetFrames, targetRate);
-      const src    = offCtx.createBufferSource();
-      src.buffer   = audioBuffer;
-      src.connect(offCtx.destination);
-      src.start(0);
-
-      const rendered = await offCtx.startRendering();
-      return rendered.getChannelData(0); // Float32Array
-    }
-
-    // ── 停止麦克风流 ──
-    function stopStream() {
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-      }
-    }
-
-    function resetVoiceUi() {
-      voiceMode = false;
-      voiceCancel = false;
-      pendingPermission = false;
-      voiceOverlay.classList.add('hidden');
-      voiceTarget.classList.remove('voice-recording');
-      inputArea.classList.remove('voice-cancel');
-    }
-
-    function abortVoiceCapture() {
-      voiceRequestId += 1;
-      if (mediaRecorder?.state && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.ondataavailable = null;
-        mediaRecorder.onstop = null;
-        mediaRecorder.stop();
-      }
-      mediaRecorder = null;
-      stopStream();
-      audioChunks = [];
-      processing = false;
-      resetVoiceUi();
-    }
-
-    // ── 进入录音模式 ──
-    function enterVoiceMode() {
-      if (pendingPermission) {
-        return;
-      }
-      if (!workerReady) {
-        showToast('模型加载中，请稍候…');
-        return;
-      }
-      pendingPermission = true;
-      voiceCancel  = false;
-      audioChunks  = [];
-      playerInput.blur();
-      voiceOverlay.classList.remove('hidden');
-      voiceTarget.classList.add('voice-recording');
-      inputArea.classList.remove('voice-cancel');
-      if (voiceHint) voiceHint.textContent = '请求麦克风权限…';
-
-      const requestId = ++voiceRequestId;
-
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(s => {
-          if (requestId !== voiceRequestId) {
-            s.getTracks().forEach(t => t.stop());
-            return;
-          }
-          pendingPermission = false;
-          if (!pressActive) {
-            s.getTracks().forEach(t => t.stop());
-            resetVoiceUi();
-            return;
-          }
-          voiceMode = true;
-          stream = s;
-          if (voiceHint) voiceHint.textContent = '上划取消';
-
-          // 选择最佳支持的 MIME 类型
-          const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', 'audio/mp4']
-            .find(m => MediaRecorder.isTypeSupported(m)) || '';
-
-          mediaRecorder = new MediaRecorder(s, mimeType ? { mimeType } : {});
-          mediaRecorder.ondataavailable = (ev) => {
-            if (ev.data.size > 0) audioChunks.push(ev.data);
-          };
-          mediaRecorder.start();
-        })
-        .catch(() => {
-          if (requestId !== voiceRequestId) return;
-          pendingPermission = false;
-          resetVoiceUi();
-          showToast('无法访问麦克风，请检查权限');
-        });
-    }
-
-    // ── 退出录音模式 ──
-    function exitVoiceMode(cancelled) {
-      if (!voiceMode && !pendingPermission) return;
-
-      if (pendingPermission) {
-        abortVoiceCapture();
-        return;
-      }
-
-      voiceMode = false;
-      voiceTarget.classList.remove('voice-recording');
-      inputArea.classList.remove('voice-cancel');
-
-      if (cancelled) {
-        voiceOverlay.classList.add('hidden');
-        if (mediaRecorder?.state !== 'inactive') {
-          mediaRecorder.ondataavailable = null;
-          mediaRecorder.onstop = null;
-          mediaRecorder.stop();
-        }
-        mediaRecorder = null;
-        stopStream();
-        audioChunks = [];
-        return;
-      }
-
-      // 正常结束：停止录音并开始 Whisper 推理
-      if (voiceHint) voiceHint.textContent = '处理中…';
-      processing = true;
-
-      const finalize = async () => {
-        stopStream();
-        mediaRecorder = null;
-        if (!audioChunks.length) {
-          voiceOverlay.classList.add('hidden');
-          processing = false;
-          return;
-        }
-        const mimeType = mediaRecorder?.mimeType || 'audio/webm';
-        const blob = new Blob(audioChunks, { type: mimeType });
-        audioChunks = [];
-
-        try {
-          const float32 = await decodeAudioTo16k(blob);
-          if (!float32) {
-            voiceOverlay.classList.add('hidden');
-            processing = false;
-            showToast('录音太短，请重试');
-            return;
-          }
-          // 转移 ArrayBuffer 所有权以避免内存拷贝
-          worker.postMessage({ type: 'transcribe', audio: float32 }, [float32.buffer]);
-        } catch (err) {
-          voiceOverlay.classList.add('hidden');
-          processing = false;
-          showToast('音频处理失败：' + err.message);
-        }
-      };
-
-      if (mediaRecorder?.state !== 'inactive') {
-        mediaRecorder.onstop = finalize;
-        mediaRecorder.stop();
-      } else {
-        finalize();
-      }
-    }
-
-    function clearPressTimer() {
-      if (!pressTimer) return false;
-      clearTimeout(pressTimer);
-      pressTimer = null;
-      return true;
-    }
-
-    function beginPress(clientY) {
-      if (processing || voiceMode || pendingPermission) return;
-      pressActive = true;
-      startY = clientY;
-      clearPressTimer();
-      pressTimer = setTimeout(() => {
-        pressTimer = null;
-        enterVoiceMode();
-      }, 400);
-    }
-
-    function updatePress(clientY) {
-      if (!voiceMode) return;
-      const dy = startY - clientY;
-      voiceCancel = dy > 50;
-      inputArea.classList.toggle('voice-cancel', voiceCancel);
-      if (voiceHint) voiceHint.textContent = voiceCancel ? '松手取消' : '上划取消';
-    }
-
-    function endPress(cancelled = false) {
-      pressActive = false;
-      if (clearPressTimer()) {
-        return;
-      }
-      if (voiceMode || pendingPermission) exitVoiceMode(cancelled || voiceCancel);
-    }
-
-    // ── 桌面和移动端统一用 Pointer 事件：按住输入框 400ms 进入录音 ──
-    voiceTarget.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0 || activePointerId !== null) return;
-      activePointerId = e.pointerId;
-      try { voiceTarget.setPointerCapture(e.pointerId); } catch (_) {}
-      beginPress(e.clientY);
-    });
-
-    voiceTarget.addEventListener('pointermove', (e) => {
-      if (e.pointerId !== activePointerId) return;
-      updatePress(e.clientY);
-    });
-
-    function releasePointer(e, cancelled = false) {
-      if (e.pointerId !== activePointerId) return;
-      endPress(cancelled);
-      try { voiceTarget.releasePointerCapture(e.pointerId); } catch (_) {}
-      activePointerId = null;
-    }
-
-    voiceTarget.addEventListener('pointerup', (e) => {
-      releasePointer(e, false);
-    });
-
-    voiceTarget.addEventListener('pointercancel', (e) => {
-      releasePointer(e, true);
-    });
-
-    voiceTarget.addEventListener('pointerleave', (e) => {
-      if (e.pointerId !== activePointerId || voiceMode) return;
-      releasePointer(e, true);
-    });
-
-    voiceTarget.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-    });
-
-    window.addEventListener('blur', () => {
-      pressActive = false;
-      clearPressTimer();
-      if (voiceMode || pendingPermission) {
-        abortVoiceCapture();
-      }
-      activePointerId = null;
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'hidden') return;
-      pressActive = false;
-      clearPressTimer();
-      if (voiceMode || pendingPermission) {
-        abortVoiceCapture();
-      }
-      activePointerId = null;
-    });
-
-    // 启动 Worker（预热）
-    initWorker();
-  })();
 
   // ── 回合历史系统 ─────────────────────────────────────────────
 

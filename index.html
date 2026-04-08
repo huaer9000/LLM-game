@@ -156,6 +156,7 @@
       <span class="toolbar-title">世界模拟器</span>
       <span id="round-indicator" class="round-indicator hidden"></span>
       <span id="debug-indicator" class="debug-indicator hidden">DEBUG</span>
+      <button id="mobile-menu-btn" class="toolbar-menu-btn" type="button" aria-label="打开菜单" aria-expanded="false">菜单</button>
       <div class="toolbar-actions">
         <button id="new-game-btn"     class="toolbar-btn">新游戏</button>
         <button id="restart-game-btn" class="toolbar-btn">重新开始</button>
@@ -178,10 +179,10 @@
       <div class="dp-section">
         <div class="dp-label">字号</div>
         <div class="dp-row">
-          <button class="dp-btn" data-size="13">小</button>
-          <button class="dp-btn" data-size="15">中</button>
-          <button class="dp-btn" data-size="17">大</button>
-          <button class="dp-btn" data-size="19">特大</button>
+          <button class="dp-btn" data-size="15">小</button>
+          <button class="dp-btn" data-size="17">中</button>
+          <button class="dp-btn" data-size="19">大</button>
+          <button class="dp-btn" data-size="21">特大</button>
         </div>
       </div>
       <div class="dp-section">
@@ -218,15 +219,8 @@
         <!-- 输入区 -->
         <div id="input-area">
           <button id="items-btn" class="items-btn" title="查看回合历史">📖</button>
-          <textarea id="player-input" rows="1" placeholder="输入行动，或按住说话" autocomplete="off" spellcheck="false"></textarea>
+          <textarea id="player-input" rows="1" placeholder="输入自定义行动..." autocomplete="off" spellcheck="false"></textarea>
           <button id="submit-btn" class="btn btn-primary">发送</button>
-          <!-- 语音录制覆盖层 -->
-          <div id="voice-overlay" class="hidden">
-            <div class="voice-dots">
-              <span></span><span></span><span></span><span></span><span></span>
-            </div>
-            <div id="voice-hint">上划取消</div>
-          </div>
         </div>
 
       </div>

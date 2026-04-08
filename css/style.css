@@ -4,11 +4,11 @@
 
 /* ── 字体族变量 ───────────────────────────────────────────── */
 :root {
-  --font-mono:    'Courier New', Courier, monospace;
-  --font-sans:    system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-serif:   'Songti SC', STSong, 'SimSun', Georgia, serif;
+  --font-mono:    'Kaiti SC', 'STKaiti', 'KaiTi', 'BiauKai', 'DFKai-SB', serif;
+  --font-sans:    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, -apple-system, sans-serif;
+  --font-serif:   'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', STSong, 'SimSun', Georgia, serif;
   --font-family:  var(--font-mono);
-  --font-size:    14px;
+  --font-size:    15px;
   --line-height:  1.75;
   --radius:       3px;
   --game-rail-width: 980px;
@@ -545,6 +545,24 @@ select {
   gap: 4px;
   flex-shrink: 0;
   min-width: 0;
+}
+
+.toolbar-menu-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-dim);
+  font-family: var(--font-family);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toolbar-menu-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 /* ── 回合指示器 ────────────────────────────────────────────── */
@@ -1331,57 +1349,6 @@ code.md-code {
   flex: 1;
 }
 
-/* ── 语音录制覆盖层 ─────────────────────────────────────────── */
-#input-area {
-  position: relative;
-}
-#voice-overlay {
-  position: absolute;
-  inset: 0;
-  background: #1a1a1a;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  z-index: 20;
-  pointer-events: none;
-}
-#input-area.voice-cancel #voice-overlay {
-  background: #8b1a1a;
-}
-.voice-dots {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.voice-dots span {
-  display: inline-block;
-  width: 6px;
-  height: 24px;
-  border-radius: 3px;
-  background: rgba(255,255,255,0.85);
-  animation: voice-bar 1.0s ease-in-out infinite;
-}
-.voice-dots span:nth-child(1) { animation-delay: 0.0s; }
-.voice-dots span:nth-child(2) { animation-delay: 0.15s; }
-.voice-dots span:nth-child(3) { animation-delay: 0.30s; }
-.voice-dots span:nth-child(4) { animation-delay: 0.45s; }
-.voice-dots span:nth-child(5) { animation-delay: 0.60s; }
-@keyframes voice-bar {
-  0%, 100% { transform: scaleY(0.3); opacity: 0.4; }
-  50%       { transform: scaleY(1.0); opacity: 1.0; }
-}
-#voice-hint {
-  font-size: 12px;
-  color: rgba(255,255,255,0.6);
-  letter-spacing: 0.05em;
-}
-#input-area.voice-cancel #voice-hint {
-  color: rgba(255,200,200,0.9);
-}
-
 /* ── 后悔药 按钮 ──────────────────────────────────────────── */
 .items-btn {
   background: transparent;
@@ -1524,11 +1491,6 @@ code.md-code {
   line-height: 1.5;
   background: var(--bg);
   border-radius: 8px;
-}
-
-#player-input.voice-recording {
-  border-color: var(--accent);
-  background: rgba(138, 122, 80, 0.12);
 }
 
 #submit-btn {
@@ -2090,35 +2052,53 @@ textarea.auto-resize {
 ════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   :root {
-    --font-size: 15px;
+    --font-size: 19px;
   }
 
 
   #toolbar {
-    height: auto;
-    min-height: 42px;
-    padding: 8px 12px;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    height: 48px;
+    min-height: 48px;
+    padding: 0 12px;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  .toolbar-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .toolbar-actions {
-    flex: 1 1 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 12px;
+    z-index: 40;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 180px;
+    max-width: calc(100vw - 24px);
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-toolbar) 96%, transparent);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.24);
     gap: 6px;
-    padding-bottom: 2px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
   }
 
-  .toolbar-actions::-webkit-scrollbar {
-    display: none;
+  #toolbar.menu-open .toolbar-actions {
+    display: flex;
   }
 
   .toolbar-btn {
     white-space: nowrap;
     flex: 0 0 auto;
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
   }
 
   .setup-card {
